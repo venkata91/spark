@@ -186,8 +186,15 @@ object RowOrdering extends CodeGeneratorWithInterpretedFallback[Seq[SortOrder], 
     new InterpretedOrdering(in)
   }
 
-  def create(order: Seq[SortOrder], inputSchema: Seq[Attribute]): BaseOrdering = {
-    createObject(bindReferences(order, inputSchema))
+  def create(
+      order: Seq[SortOrder],
+      inputSchema: Seq[Attribute],
+      zordering: Boolean = false): BaseOrdering = {
+    if (zordering) {
+      new InterpretedZOrdering(bindReferences(order, inputSchema))
+    } else {
+      createObject(bindReferences(order, inputSchema))
+    }
   }
 
   /**
@@ -198,5 +205,15 @@ object RowOrdering extends CodeGeneratorWithInterpretedFallback[Seq[SortOrder], 
       case (dt, index) => SortOrder(BoundReference(index, dt, nullable = true), Ascending)
     }
     create(order, Seq.empty)
+  }
+
+  /**
+   * Creates a row z-ordering for the given schema
+   */
+  def createZOrdering(dataTypes: Seq[DataType]): BaseOrdering = {
+    val order: Seq[SortOrder] = dataTypes.zipWithIndex.map {
+      case (dt, index) => SortOrder(BoundReference(index, dt, nullable = true), Ascending)
+    }
+    create(order, Seq.empty, zordering = true)
   }
 }
