@@ -245,6 +245,12 @@ object SQLConf {
     .stringConf
     .createOptional
 
+  val ZORDER_ENABLED = buildConf("spark.sql.zorder.enabled")
+    .doc("Enables Z-ordering instead of regular ordering on the sort columns")
+    .version("3.0.0")
+    .booleanConf
+    .createWithDefault(false)
+
   val DYNAMIC_PARTITION_PRUNING_ENABLED =
     buildConf("spark.sql.optimizer.dynamicPartitionPruning.enabled")
       .doc("When true, we will generate predicate for partition column when it's used as join key")
@@ -2788,6 +2794,8 @@ class SQLConf extends Serializable with Logging {
   def optimizerPlanChangeBatches: Option[String] = getConf(OPTIMIZER_PLAN_CHANGE_LOG_BATCHES)
 
   def dynamicPartitionPruningEnabled: Boolean = getConf(DYNAMIC_PARTITION_PRUNING_ENABLED)
+
+  def zorderEnabled: Boolean = getConf(ZORDER_ENABLED)
 
   def dynamicPartitionPruningUseStats: Boolean = getConf(DYNAMIC_PARTITION_PRUNING_USE_STATS)
 

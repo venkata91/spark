@@ -28,6 +28,7 @@ import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, CodeGe
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.catalyst.util.DateTimeConstants.NANOS_PER_MILLIS
 import org.apache.spark.sql.execution.metric.SQLMetrics
+import org.apache.spark.util.collection.unsafe.sort.PrefixComparator
 
 /**
  * Performs (external) sorting.
@@ -57,6 +58,8 @@ case class SortExec(
 
   private val enableRadixSort = sqlContext.conf.enableRadixSort
 
+  private val isZorderEnabled = sqlContext.conf.zorderEnabled
+
   override lazy val metrics = Map(
     "sortTime" -> SQLMetrics.createTimingMetric(sparkContext, "sort time"),
     "peakMemory" -> SQLMetrics.createSizeMetric(sparkContext, "peak memory"),
@@ -71,37 +74,68 @@ case class SortExec(
    * should make it public.
    */
   def createSorter(): UnsafeExternalRowSorter = {
-    val ordering = RowOrdering.create(sortOrder, output)
+      if (isZorderEnabled) {
+        val ordering = RowOrdering.create(sortOrder, output, zordering = true)
+        val boundSortExpression = BindReferences.bindReference(sortOrder.head, output)
+        // No op prefix comparator
+        val prefixComparator = new PrefixComparator {
+          override def compare(prefix1: Long, prefix2: Long): Int = 0
+        }
 
-    // The comparator for comparing prefix
-    val boundSortExpression = BindReferences.bindReference(sortOrder.head, output)
-    val prefixComparator = SortPrefixUtils.getPrefixComparator(boundSortExpression)
+        val prefixComputer = new UnsafeExternalRowSorter.PrefixComputer {
+          private val result = new UnsafeExternalRowSorter.PrefixComputer.Prefix
 
-    val canUseRadixSort = enableRadixSort && sortOrder.length == 1 &&
-      SortPrefixUtils.canSortFullyWithPrefix(boundSortExpression)
-
-    // The generator for prefix
-    val prefixExpr = SortPrefix(boundSortExpression)
-    val prefixProjection = UnsafeProjection.create(Seq(prefixExpr))
-    val prefixComputer = new UnsafeExternalRowSorter.PrefixComputer {
-      private val result = new UnsafeExternalRowSorter.PrefixComputer.Prefix
-      override def computePrefix(row: InternalRow):
+          override def computePrefix(row: InternalRow):
           UnsafeExternalRowSorter.PrefixComputer.Prefix = {
-        val prefix = prefixProjection.apply(row)
-        result.isNull = prefix.isNullAt(0)
-        result.value = if (result.isNull) prefixExpr.nullValue else prefix.getLong(0)
-        result
+            result.isNull = true
+            result.value = Long.MaxValue
+            result
+          }
+        }
+        val canUseRadixSort = enableRadixSort && sortOrder.length == 1 &&
+          SortPrefixUtils.canSortFullyWithPrefix(boundSortExpression)
+
+        val pageSize = SparkEnv.get.memoryManager.pageSizeBytes
+        rowSorter = UnsafeExternalRowSorter.create(
+          schema, ordering, prefixComparator, prefixComputer, pageSize, canUseRadixSort)
+
+        if (testSpillFrequency > 0) {
+          rowSorter.setTestSpillFrequency(testSpillFrequency)
+        }
+        rowSorter
+      } else {
+        val ordering = RowOrdering.create(sortOrder, output)
+      // The comparator for comparing prefix
+      val boundSortExpression = BindReferences.bindReference(sortOrder.head, output)
+      val prefixComparator = SortPrefixUtils.getPrefixComparator(boundSortExpression)
+
+      val canUseRadixSort = enableRadixSort && sortOrder.length == 1 &&
+        SortPrefixUtils.canSortFullyWithPrefix(boundSortExpression)
+
+      // The generator for prefix
+      val prefixExpr = SortPrefix(boundSortExpression)
+      val prefixProjection = UnsafeProjection.create(Seq(prefixExpr))
+      val prefixComputer = new UnsafeExternalRowSorter.PrefixComputer {
+        private val result = new UnsafeExternalRowSorter.PrefixComputer.Prefix
+
+        override def computePrefix(row: InternalRow):
+        UnsafeExternalRowSorter.PrefixComputer.Prefix = {
+          val prefix = prefixProjection.apply(row)
+          result.isNull = prefix.isNullAt(0)
+          result.value = if (result.isNull) prefixExpr.nullValue else prefix.getLong(0)
+          result
+        }
       }
-    }
 
-    val pageSize = SparkEnv.get.memoryManager.pageSizeBytes
-    rowSorter = UnsafeExternalRowSorter.create(
-      schema, ordering, prefixComparator, prefixComputer, pageSize, canUseRadixSort)
+      val pageSize = SparkEnv.get.memoryManager.pageSizeBytes
+      rowSorter = UnsafeExternalRowSorter.create(
+        schema, ordering, prefixComparator, prefixComputer, pageSize, canUseRadixSort)
 
-    if (testSpillFrequency > 0) {
-      rowSorter.setTestSpillFrequency(testSpillFrequency)
+      if (testSpillFrequency > 0) {
+        rowSorter.setTestSpillFrequency(testSpillFrequency)
+      }
+      rowSorter
     }
-    rowSorter
   }
 
   protected override def doExecute(): RDD[InternalRow] = {
