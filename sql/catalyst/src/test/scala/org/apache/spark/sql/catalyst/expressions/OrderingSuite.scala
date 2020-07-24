@@ -62,6 +62,22 @@ class OrderingSuite extends SparkFunSuite with ExpressionEvalHelper {
     }
   }
 
+  def compareInts(a: Seq[Any], b: Seq[Any], expected: Int): Unit = {
+    test(s"compare ints: a = $a, b = $b") {
+      val dataType = LongType
+      val rowType = StructType(Seq(StructField("a", dataType, nullable = true),
+        StructField("b", dataType, nullable = true), StructField("c", dataType, nullable = true)))
+      val toCatalyst = CatalystTypeConverters.createToCatalystConverter(rowType)
+      val rowA = toCatalyst(Row(a: _*)).asInstanceOf[InternalRow]
+      val rowB = toCatalyst(Row(b: _*)).asInstanceOf[InternalRow]
+      val zordering = InterpretedZOrdering.forSchema(Seq(dataType, dataType))
+
+      assert(signum(zordering.compare(rowA, rowB)) === -1)
+    }
+  }
+
+  compareInts(Seq[Any](20L, 55L, 11L), Seq[Any](100L, 10L, 1000L), -1)
+
   // Two arrays have the same size.
   compareArrays(Seq[Any](), Seq[Any](), 0)
   compareArrays(Seq[Any](1), Seq[Any](1), 0)

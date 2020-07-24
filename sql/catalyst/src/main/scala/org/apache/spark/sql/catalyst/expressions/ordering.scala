@@ -81,6 +81,72 @@ class InterpretedOrdering(ordering: Seq[SortOrder]) extends BaseOrdering {
   }
 }
 
+class InterpretedZOrdering(ordering: Seq[SortOrder]) extends BaseOrdering {
+  def this(ordering: Seq[SortOrder], inputSchema: Seq[Attribute]) =
+    this(bindReferences(ordering, inputSchema))
+
+  override def compare(a: InternalRow, b: InternalRow): Int = {
+    var msdOfLhs = 0L
+    var msdOfRhs = 0L
+
+    var i = 0
+    val size = ordering.size
+    while(i < size) {
+      val order = ordering(i)
+      val left = order.child.eval(a)
+      val right = order.child.eval(b)
+
+      if (i == 0) {
+        order.dataType match {
+          case dt: NumericType =>
+            msdOfLhs = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(left)
+            msdOfRhs = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(right)
+          case other =>
+            throw new IllegalArgumentException(s"Type $other does not support ordered operations")
+        }
+      } else {
+        order.dataType match {
+          case dt: NumericType =>
+            val lhsValue = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(left)
+            val rhsValue = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(right)
+
+            if (lessMsb(msdOfLhs ^ msdOfRhs, lhsValue ^ rhsValue)) {
+              msdOfLhs = lhsValue
+              msdOfRhs = rhsValue
+            }
+          case other =>
+            throw new IllegalArgumentException(s"Type $other does not support ordered operations")
+        }
+      }
+      i = i + 1
+    }
+
+    if (msdOfLhs < msdOfRhs) {
+      -1
+    } else if (msdOfLhs > msdOfRhs) {
+      1
+    } else {
+      0
+    }
+  }
+
+  private def lessMsb(a: Long, b: Long): Boolean = {
+    (a < b) && (a < (a ^ b))
+  }
+}
+
+object InterpretedZOrdering {
+
+  /**
+   * Creates a [[InterpretedZOrdering]] for the given schema, in natural ascending order.
+   */
+  def forSchema(dataTypes: Seq[DataType]): InterpretedZOrdering = {
+    new InterpretedZOrdering(dataTypes.zipWithIndex.map {
+      case (dt, index) => SortOrder(BoundReference(index, dt, nullable = true), Ascending)
+    })
+  }
+}
+
 object InterpretedOrdering {
 
   /**
