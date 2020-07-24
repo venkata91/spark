@@ -99,16 +99,16 @@ class InterpretedZOrdering(ordering: Seq[SortOrder]) extends BaseOrdering {
       if (i == 0) {
         order.dataType match {
           case dt: NumericType =>
-            msdOfLhs = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(left)
-            msdOfRhs = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(right)
+            msdOfLhs = dt.numeric.asInstanceOf[Numeric[Any]].toLong(left)
+            msdOfRhs = dt.numeric.asInstanceOf[Numeric[Any]].toLong(right)
           case other =>
             throw new IllegalArgumentException(s"Type $other does not support ordered operations")
         }
       } else {
         order.dataType match {
           case dt: NumericType =>
-            val lhsValue = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(left)
-            val rhsValue = dt.exactNumeric.asInstanceOf[Numeric[Any]].toLong(right)
+            val lhsValue = dt.numeric.asInstanceOf[Numeric[Any]].toLong(left)
+            val rhsValue = dt.numeric.asInstanceOf[Numeric[Any]].toLong(right)
 
             if (lessMsb(msdOfLhs ^ msdOfRhs, lhsValue ^ rhsValue)) {
               msdOfLhs = lhsValue
