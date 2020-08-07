@@ -22,13 +22,8 @@ import java.lang.reflect.{InvocationTargetException, UndeclaredThrowableExceptio
 import java.net.{URI, URL}
 import java.security.PrivilegedExceptionAction
 import java.text.ParseException
-import java.util.{ServiceLoader, UUID}
 import java.util.jar.JarInputStream
-
-import scala.annotation.tailrec
-import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
-import scala.util.{Failure, Properties, Success, Try}
+import java.util.{ServiceLoader, UUID}
 
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
@@ -47,15 +42,19 @@ import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.plugins.matcher.GlobPatternMatcher
 import org.apache.ivy.plugins.repository.file.FileRepository
 import org.apache.ivy.plugins.resolver.{ChainResolver, FileSystemResolver, IBiblioResolver}
-
 import org.apache.spark._
 import org.apache.spark.api.r.RUtils
 import org.apache.spark.deploy.rest._
 import org.apache.spark.internal.Logging
-import org.apache.spark.internal.config._
 import org.apache.spark.internal.config.UI._
+import org.apache.spark.internal.config._
 import org.apache.spark.launcher.SparkLauncher
 import org.apache.spark.util._
+
+import scala.annotation.tailrec
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
+import scala.util.{Properties, Try}
 
 /**
  * Whether to submit, kill, or request the status of an application.
@@ -1347,6 +1346,13 @@ private[spark] object SparkSubmitUtils {
       ""
     } else {
       val sysOut = System.out
+      // Default configuration name for ivy
+      val ivyConfName = "default"
+
+      // A Module descriptor must be specified. Entries are dummy strings
+      val md = getModuleDescriptor
+
+      md.setDefaultConf(ivyConfName)
       try {
         // To prevent ivy from logging to system out
         System.setOut(printStream)
@@ -1374,14 +1380,6 @@ private[spark] object SparkSubmitUtils {
           resolveOptions.setDownload(true)
         }
 
-        // Default configuration name for ivy
-        val ivyConfName = "default"
-
-        // A Module descriptor must be specified. Entries are dummy strings
-        val md = getModuleDescriptor
-
-        md.setDefaultConf(ivyConfName)
-
         // Add exclusion rules for Spark and Scala Library
         addExclusionRules(ivySettings, ivyConfName, md)
         // add all supplied maven artifacts as dependencies
@@ -1400,11 +1398,10 @@ private[spark] object SparkSubmitUtils {
             "[organization]_[artifact]-[revision](-[classifier]).[ext]",
           retrieveOptions.setConfs(Array(ivyConfName)))
         val paths = resolveDependencyPaths(rr.getArtifacts.toArray, packagesDirectory)
-        val mdId = md.getModuleRevisionId
-        clearIvyResolutionFiles(mdId, ivySettings, ivyConfName)
         paths
       } finally {
         System.setOut(sysOut)
+        clearIvyResolutionFiles(md.getModuleRevisionId, ivySettings, ivyConfName)
       }
     }
   }
