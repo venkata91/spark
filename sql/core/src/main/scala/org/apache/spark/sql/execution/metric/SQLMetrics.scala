@@ -26,7 +26,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.scheduler.AccumulableInfo
 import org.apache.spark.sql.execution.ui.SparkListenerDriverAccumUpdates
 import org.apache.spark.util.{AccumulatorContext, AccumulatorV2, Utils}
-
+import org.apache.spark.util.Utils.weakIntern
 
 /**
  * A metric used in a SQL query plan. This is implemented as an [[AccumulatorV2]]. Updates on
@@ -103,7 +103,7 @@ object SQLMetrics {
 
   def createMetric(sc: SparkContext, name: String): SQLMetric = {
     val acc = new SQLMetric(SUM_METRIC)
-    acc.register(sc, name = Some(name), countFailedValues = false)
+    acc.register(sc, name = Some(weakIntern(name)), countFailedValues = false)
     acc
   }
 
@@ -116,7 +116,7 @@ object SQLMetrics {
     // data size total (min, med, max):
     // 100GB (100MB, 1GB, 10GB)
     val acc = new SQLMetric(SIZE_METRIC, -1)
-    acc.register(sc, name = Some(name), countFailedValues = false)
+    acc.register(sc, name = Some(weakIntern(name)), countFailedValues = false)
     acc
   }
 
@@ -125,14 +125,14 @@ object SQLMetrics {
     // duration total (min, med, max):
     // 5s (800ms, 1s, 2s)
     val acc = new SQLMetric(TIMING_METRIC, -1)
-    acc.register(sc, name = Some(name), countFailedValues = false)
+    acc.register(sc, name = Some(weakIntern(name)), countFailedValues = false)
     acc
   }
 
   def createNanoTimingMetric(sc: SparkContext, name: String): SQLMetric = {
     // Same with createTimingMetric, just normalize the unit of time to millisecond.
     val acc = new SQLMetric(NS_TIMING_METRIC, -1)
-    acc.register(sc, name = Some(name), countFailedValues = false)
+    acc.register(sc, name = Some(weakIntern(name)), countFailedValues = false)
     acc
   }
 
@@ -147,7 +147,7 @@ object SQLMetrics {
     // probe avg (min, med, max):
     // (1.2, 2.2, 6.3)
     val acc = new SQLMetric(AVERAGE_METRIC)
-    acc.register(sc, name = Some(name), countFailedValues = false)
+    acc.register(sc, name = Some(weakIntern(name)), countFailedValues = false)
     acc
   }
 

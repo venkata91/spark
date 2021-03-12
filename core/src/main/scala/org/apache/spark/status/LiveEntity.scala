@@ -24,8 +24,6 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashSet, TreeSet}
 import scala.collection.mutable.HashMap
 
-import com.google.common.collect.Interners
-
 import org.apache.spark.JobExecutionStatus
 import org.apache.spark.executor.{ExecutorMetrics, TaskMetrics}
 import org.apache.spark.resource.{ExecutorResourceRequest, ResourceInformation, ResourceProfile, TaskResourceRequest}
@@ -34,6 +32,7 @@ import org.apache.spark.status.api.v1
 import org.apache.spark.storage.{RDDInfo, StorageLevel}
 import org.apache.spark.ui.SparkUI
 import org.apache.spark.util.{AccumulatorContext, Utils}
+import org.apache.spark.util.Utils.weakIntern
 import org.apache.spark.util.collection.OpenHashSet
 
 /**
@@ -656,8 +655,6 @@ private class SchedulerPool(name: String) extends LiveEntity {
 
 private[spark] object LiveEntityHelpers {
 
-  private val stringInterner = Interners.newWeakInterner[String]()
-
   private def accuValuetoString(value: Any): String = value match {
     case list: java.util.List[_] =>
       // SPARK-30379: For collection accumulator, string representation might
@@ -686,11 +683,6 @@ private[spark] object LiveEntityHelpers {
           acc.value.map(accuValuetoString).orNull)
       }
       .toSeq
-  }
-
-  /** String interning to reduce the memory usage. */
-  def weakIntern(s: String): String = {
-    stringInterner.intern(s)
   }
 
   // scalastyle:off argcount
