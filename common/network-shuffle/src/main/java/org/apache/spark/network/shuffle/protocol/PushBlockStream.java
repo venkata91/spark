@@ -35,15 +35,26 @@ import org.apache.spark.network.protocol.Encoders;
 public class PushBlockStream extends BlockTransferMessage {
   public final String appId;
   public final int shuffleId;
+  public final int stageId;
+  public final int stageAttemptNumber;
   public final int mapIndex;
   public final int reduceId;
   // Similar to the chunkIndex in StreamChunkId, indicating the index of a block in a batch of
   // blocks to be pushed.
   public final int index;
 
-  public PushBlockStream(String appId, int shuffleId, int mapIndex, int reduceId, int index) {
+  public PushBlockStream(
+      String appId,
+      int shuffleId,
+      int stageId,
+      int stageAttemptNumber,
+      int mapIndex,
+      int reduceId,
+      int index) {
     this.appId = appId;
     this.shuffleId = shuffleId;
+    this.stageId = stageId;
+    this.stageAttemptNumber = stageAttemptNumber;
     this.mapIndex = mapIndex;
     this.reduceId = reduceId;
     this.index = index;
@@ -56,7 +67,7 @@ public class PushBlockStream extends BlockTransferMessage {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(appId, shuffleId, mapIndex , reduceId, index);
+    return Objects.hashCode(appId, shuffleId, stageId, stageAttemptNumber, mapIndex, reduceId, index);
   }
 
   @Override
@@ -64,6 +75,8 @@ public class PushBlockStream extends BlockTransferMessage {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
       .append("appId", appId)
       .append("shuffleId", shuffleId)
+      .append("stageId", stageId)
+      .append("stageAttemptNumber", stageAttemptNumber)
       .append("mapIndex", mapIndex)
       .append("reduceId", reduceId)
       .append("index", index)
@@ -76,6 +89,8 @@ public class PushBlockStream extends BlockTransferMessage {
       PushBlockStream o = (PushBlockStream) other;
       return Objects.equal(appId, o.appId)
         && shuffleId == o.shuffleId
+        && stageId == o.stageId
+        && stageAttemptNumber == o.stageAttemptNumber
         && mapIndex == o.mapIndex
         && reduceId == o.reduceId
         && index == o.index;
@@ -85,13 +100,15 @@ public class PushBlockStream extends BlockTransferMessage {
 
   @Override
   public int encodedLength() {
-    return Encoders.Strings.encodedLength(appId) + 16;
+    return Encoders.Strings.encodedLength(appId) + 24;
   }
 
   @Override
   public void encode(ByteBuf buf) {
     Encoders.Strings.encode(buf, appId);
     buf.writeInt(shuffleId);
+    buf.writeInt(stageId);
+    buf.writeInt(stageAttemptNumber);
     buf.writeInt(mapIndex);
     buf.writeInt(reduceId);
     buf.writeInt(index);
@@ -100,9 +117,11 @@ public class PushBlockStream extends BlockTransferMessage {
   public static PushBlockStream decode(ByteBuf buf) {
     String appId = Encoders.Strings.decode(buf);
     int shuffleId = buf.readInt();
+    int stageId = buf.readInt();
+    int stageAttemptNumber = buf.readInt();
     int mapIdx = buf.readInt();
     int reduceId = buf.readInt();
     int index = buf.readInt();
-    return new PushBlockStream(appId, shuffleId, mapIdx, reduceId, index);
+    return new PushBlockStream(appId, shuffleId, stageId, stageAttemptNumber, mapIdx, reduceId, index);
   }
 }

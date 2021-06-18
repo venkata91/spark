@@ -85,21 +85,26 @@ public interface MergedShuffleFileManager {
    *
    * @param appId application ID
    * @param shuffleId shuffle ID
+   * @param stageId stage ID
+   * @param stageAttemptNumber stage attempt ID
    * @param reduceId reducer ID
    * @param chunkId merged shuffle file chunk ID
    * @return The {@link ManagedBuffer} for the given merged shuffle chunk
    */
-  ManagedBuffer getMergedBlockData(String appId, int shuffleId, int reduceId, int chunkId);
+  ManagedBuffer getMergedBlockData(
+      String appId, int shuffleId, int stageId, int stageAttemptNumber, int reduceId, int chunkId);
 
   /**
    * Get the meta information of a merged block.
    *
    * @param appId application ID
    * @param shuffleId shuffle ID
+   * @param stageId stage ID
+   * @param stageAttemptNumber stage attempt ID
    * @param reduceId reducer ID
    * @return meta information of a merged block
    */
-  MergedBlockMeta getMergedBlockMeta(String appId, int shuffleId, int reduceId);
+  MergedBlockMeta getMergedBlockMeta(String appId, int shuffleId, int stageId, int stageAttemptNumber, int reduceId);
 
   /**
    * Get the local directories which stores the merged shuffle files.

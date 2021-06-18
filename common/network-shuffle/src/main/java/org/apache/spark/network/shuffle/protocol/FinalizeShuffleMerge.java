@@ -33,12 +33,18 @@ import org.apache.spark.network.protocol.Encoders;
 public class FinalizeShuffleMerge extends BlockTransferMessage {
   public final String appId;
   public final int shuffleId;
+  public final int stageId;
+  public final int stageAttemptNumber;
 
   public FinalizeShuffleMerge(
       String appId,
-      int shuffleId) {
+      int shuffleId,
+      int stageId,
+      int stageAttemptNumber) {
     this.appId = appId;
     this.shuffleId = shuffleId;
+    this.stageId = stageId;
+    this.stageAttemptNumber = stageAttemptNumber;
   }
 
   @Override
@@ -48,7 +54,7 @@ public class FinalizeShuffleMerge extends BlockTransferMessage {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(appId, shuffleId);
+    return Objects.hashCode(appId, shuffleId, stageId, stageAttemptNumber);
   }
 
   @Override
@@ -56,6 +62,8 @@ public class FinalizeShuffleMerge extends BlockTransferMessage {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
       .append("appId", appId)
       .append("shuffleId", shuffleId)
+      .append("stageId", stageId)
+      .append("stageAttemptNumber", stageAttemptNumber)
       .toString();
   }
 
@@ -64,25 +72,30 @@ public class FinalizeShuffleMerge extends BlockTransferMessage {
     if (other != null && other instanceof FinalizeShuffleMerge) {
       FinalizeShuffleMerge o = (FinalizeShuffleMerge) other;
       return Objects.equal(appId, o.appId)
-        && shuffleId == o.shuffleId;
+        && shuffleId == o.shuffleId
+        && stageId == o.stageId && stageAttemptNumber == o.stageAttemptNumber;
     }
     return false;
   }
 
   @Override
   public int encodedLength() {
-    return Encoders.Strings.encodedLength(appId) + 4;
+    return Encoders.Strings.encodedLength(appId) + 12;
   }
 
   @Override
   public void encode(ByteBuf buf) {
     Encoders.Strings.encode(buf, appId);
     buf.writeInt(shuffleId);
+    buf.writeInt(stageId);
+    buf.writeInt(stageAttemptNumber);
   }
 
   public static FinalizeShuffleMerge decode(ByteBuf buf) {
     String appId = Encoders.Strings.decode(buf);
     int shuffleId = buf.readInt();
-    return new FinalizeShuffleMerge(appId, shuffleId);
+    int stageId = buf.readInt();
+    int stageAttemptNumber = buf.readInt();
+    return new FinalizeShuffleMerge(appId, shuffleId, stageId, stageAttemptNumber);
   }
 }

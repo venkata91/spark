@@ -113,6 +113,8 @@ private[spark] class IndexShuffleBlockResolver(
   private def getMergedBlockDataFile(
       appId: String,
       shuffleId: Int,
+      stageId: Int,
+      stageAttemptNumber: Int,
       reduceId: Int,
       dirs: Option[Array[String]] = None): File = {
     blockManager.diskBlockManager.getMergedShuffleFile(
@@ -122,6 +124,8 @@ private[spark] class IndexShuffleBlockResolver(
   private def getMergedBlockIndexFile(
       appId: String,
       shuffleId: Int,
+      stageId: Int,
+      stageAttemptNumber: Int,
       reduceId: Int,
       dirs: Option[Array[String]] = None): File = {
     blockManager.diskBlockManager.getMergedShuffleFile(
@@ -131,6 +135,8 @@ private[spark] class IndexShuffleBlockResolver(
   private def getMergedBlockMetaFile(
       appId: String,
       shuffleId: Int,
+      stageId: Int,
+      stageAttemptNumber: Int,
       reduceId: Int,
       dirs: Option[Array[String]] = None): File = {
     blockManager.diskBlockManager.getMergedShuffleFile(

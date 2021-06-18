@@ -167,6 +167,8 @@ public abstract class BlockStoreClient implements Closeable {
    * @param host host of shuffle server
    * @param port port of shuffle server.
    * @param shuffleId shuffle ID of the shuffle to be finalized
+   * @param stageId stage ID of the shuffle to be finalized
+   * @param stageAttemptNumber stage attempt ID of the shuffle to be finalized
    * @param listener the listener to receive MergeStatuses
    *
    * @since 3.1.0
@@ -175,6 +177,8 @@ public abstract class BlockStoreClient implements Closeable {
       String host,
       int port,
       int shuffleId,
+      int stageId,
+      int stageAttemptNumber,
       MergeFinalizerListener listener) {
     throw new UnsupportedOperationException();
   }

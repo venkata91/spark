@@ -448,12 +448,13 @@ public class ExternalBlockHandler extends RpcHandler {
 
     @Override
     public ManagedBuffer getMergedBlockData(
-        String appId, int shuffleId, int reduceId, int chunkId) {
+        String appId, int shuffleId, int stageId, int stageAttemptNumber, int reduceId, int chunkId) {
       throw new UnsupportedOperationException("Cannot handle shuffle block merge");
     }
 
     @Override
-    public MergedBlockMeta getMergedBlockMeta(String appId, int shuffleId, int reduceId) {
+    public MergedBlockMeta getMergedBlockMeta(
+        String appId, int shuffleId, int stageId, int stageAttemptNumber, int reduceId) {
       throw new UnsupportedOperationException("Cannot handle shuffle block merge");
     }
 

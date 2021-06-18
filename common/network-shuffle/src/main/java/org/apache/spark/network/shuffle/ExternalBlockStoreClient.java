@@ -163,11 +163,13 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
       String host,
       int port,
       int shuffleId,
+      int stageId,
+      int stageAttemptNumber,
       MergeFinalizerListener listener) {
     checkInit();
     try {
       TransportClient client = clientFactory.createClient(host, port);
-      ByteBuffer finalizeShuffleMerge = new FinalizeShuffleMerge(appId, shuffleId).toByteBuffer();
+      ByteBuffer finalizeShuffleMerge = new FinalizeShuffleMerge(appId, shuffleId, stageId, stageAttemptNumber).toByteBuffer();
       client.sendRpc(finalizeShuffleMerge, new RpcResponseCallback() {
         @Override
         public void onSuccess(ByteBuffer response) {

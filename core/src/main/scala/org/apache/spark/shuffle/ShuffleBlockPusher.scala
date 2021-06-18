@@ -90,11 +90,13 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
       dataFile: File,
       partitionLengths: Array[Long],
       dep: ShuffleDependency[_, _, _],
-      mapIndex: Int): Unit = {
+      mapIndex: Int,
+      stageId: Int,
+      stageAttemptNumber: Int): Unit = {
     val numPartitions = dep.partitioner.numPartitions
     val transportConf = SparkTransportConf.fromSparkConf(conf, "shuffle")
     val requests = prepareBlockPushRequests(numPartitions, mapIndex, dep.shuffleId, dataFile,
-      partitionLengths, dep.getMergerLocs, transportConf)
+      partitionLengths, dep.getMergerLocs, transportConf, stageId, stageAttemptNumber)
     // Randomize the orders of the PushRequest, so different mappers pushing blocks at the same
     // time won't be pushing the same ranges of shuffle partitions.
     pushRequests ++= Utils.randomize(requests)
@@ -331,7 +333,9 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
       dataFile: File,
       partitionLengths: Array[Long],
       mergerLocs: Seq[BlockManagerId],
-      transportConf: TransportConf): Seq[PushRequest] = {
+      transportConf: TransportConf,
+      stageId: Int,
+      stageAttemptNumber: Int): Seq[PushRequest] = {
     var offset = 0L
     var currentReqSize = 0
     var currentReqOffset = 0L
@@ -375,7 +379,8 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
         // Only push blocks under the size limit
         if (blockSize <= maxBlockSizeToPush) {
           val blockSizeInt = blockSize.toInt
-          blocks += ((ShufflePushBlockId(shuffleId, partitionId, reduceId), blockSizeInt))
+          blocks += ((ShufflePushBlockId(shuffleId, stageId, stageAttemptNumber, partitionId,
+            reduceId), blockSizeInt))
           // Only update currentReqOffset if the current block is the first in the request
           if (currentReqOffset == -1) {
             currentReqOffset = offset
