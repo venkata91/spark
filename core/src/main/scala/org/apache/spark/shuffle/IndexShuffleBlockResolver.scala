@@ -118,7 +118,7 @@ private[spark] class IndexShuffleBlockResolver(
       reduceId: Int,
       dirs: Option[Array[String]] = None): File = {
     blockManager.diskBlockManager.getMergedShuffleFile(
-      ShuffleMergedDataBlockId(appId, shuffleId, reduceId), dirs)
+      ShuffleMergedDataBlockId(appId, shuffleId, stageId, stageAttemptNumber, reduceId), dirs)
   }
 
   private def getMergedBlockIndexFile(
@@ -129,7 +129,7 @@ private[spark] class IndexShuffleBlockResolver(
       reduceId: Int,
       dirs: Option[Array[String]] = None): File = {
     blockManager.diskBlockManager.getMergedShuffleFile(
-      ShuffleMergedIndexBlockId(appId, shuffleId, reduceId), dirs)
+      ShuffleMergedIndexBlockId(appId, shuffleId, stageId, stageAttemptNumber, reduceId), dirs)
   }
 
   private def getMergedBlockMetaFile(
@@ -140,7 +140,7 @@ private[spark] class IndexShuffleBlockResolver(
       reduceId: Int,
       dirs: Option[Array[String]] = None): File = {
     blockManager.diskBlockManager.getMergedShuffleFile(
-      ShuffleMergedMetaBlockId(appId, shuffleId, reduceId), dirs)
+      ShuffleMergedMetaBlockId(appId, shuffleId, stageId, stageAttemptNumber, reduceId), dirs)
   }
 
   /**
@@ -382,11 +382,13 @@ private[spark] class IndexShuffleBlockResolver(
    * knows how to consume local merged shuffle file as multiple chunks.
    */
   override def getMergedBlockData(
-      blockId: ShuffleBlockId,
+      blockId: ShuffleMergedMetaBlockId,
       dirs: Option[Array[String]]): Seq[ManagedBuffer] = {
     val indexFile =
-      getMergedBlockIndexFile(conf.getAppId, blockId.shuffleId, blockId.reduceId, dirs)
-    val dataFile = getMergedBlockDataFile(conf.getAppId, blockId.shuffleId, blockId.reduceId, dirs)
+      getMergedBlockIndexFile(conf.getAppId, blockId.shuffleId, blockId.stageId,
+        blockId.stageAttemptNumber, blockId.reduceId, dirs)
+    val dataFile = getMergedBlockDataFile(conf.getAppId, blockId.shuffleId, blockId.stageId,
+      blockId.stageAttemptNumber, blockId.reduceId, dirs)
     // Load all the indexes in order to identify all chunks in the specified merged shuffle file.
     val size = indexFile.length.toInt
     val offsets = Utils.tryWithResource {

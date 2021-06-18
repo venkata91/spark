@@ -90,8 +90,8 @@ case class ShufflePushBlockId(
     reduceId: Int,
     stageId: Int,
     stageAttemptNumber: Int) extends BlockId {
-  override def name: String = "shufflePush_" + shuffleId + "_" + stageId + "_" + stageAttemptNumber +
-    "_" + mapIndex + "_" + reduceId + ""
+  override def name: String = "shufflePush_" + shuffleId + "_" + stageId + "_" +
+    stageAttemptNumber + "_" + mapIndex + "_" + reduceId + ""
 }
 
 @Since("3.2.0")
