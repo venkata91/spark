@@ -84,6 +84,18 @@ case class ShuffleIndexBlockId(shuffleId: Int, mapId: Long, reduceId: Int) exten
 
 @Since("3.2.0")
 @DeveloperApi
+case class ShufflePushMergeBlockId(
+    shuffleId: Int,
+    stageId: Int,
+    stageAttemptNumber: Int,
+    mapId: Long,
+    reduceId: Int) extends BlockId {
+  override def name: String = "shuffle_" + shuffleId + "_" + stageId + "_" +
+    stageAttemptNumber + "_" + mapId + "_" + reduceId
+}
+
+@Since("3.2.0")
+@DeveloperApi
 case class ShufflePushBlockId(
     shuffleId: Int,
     mapIndex: Int,
