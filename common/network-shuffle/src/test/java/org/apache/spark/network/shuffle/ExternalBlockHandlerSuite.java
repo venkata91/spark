@@ -237,7 +237,7 @@ public class ExternalBlockHandlerSuite {
 
     FinalizeShuffleMerge req = new FinalizeShuffleMerge("app0", 0, 0, 0);
     RoaringBitmap bitmap = RoaringBitmap.bitmapOf(0, 1, 2);
-    MergeStatuses statuses = new MergeStatuses(0, new RoaringBitmap[]{bitmap},
+    MergeStatuses statuses = new MergeStatuses(0, 0, 0, new RoaringBitmap[]{bitmap},
       new int[]{3}, new long[]{30});
     when(mergedShuffleManager.finalizeShuffleMerge(req)).thenReturn(statuses);
 
