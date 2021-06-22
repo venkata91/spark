@@ -31,6 +31,7 @@ from pyspark.sql.types import (
     BooleanType,
     DataType,
     DateType,
+    DecimalType,
     FractionalType,
     IntegralType,
     MapType,
@@ -42,10 +43,20 @@ from pyspark.sql.types import (
     UserDefinedType,
 )
 from pyspark.pandas.typedef import Dtype, extension_dtypes
-from pyspark.pandas.typedef.typehints import extension_object_dtypes_available
+from pyspark.pandas.typedef.typehints import (
+    extension_dtypes_available,
+    extension_float_dtypes_available,
+    extension_object_dtypes_available,
+)
+
+if extension_dtypes_available:
+    from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
+
+if extension_float_dtypes_available:
+    from pandas import Float32Dtype, Float64Dtype
 
 if extension_object_dtypes_available:
-    from pandas import BooleanDtype
+    from pandas import BooleanDtype, StringDtype
 
 if TYPE_CHECKING:
     from pyspark.pandas.indexes import Index  # noqa: F401 (SPARK-34943)
@@ -194,18 +205,40 @@ class DataTypeOps(object, metaclass=ABCMeta):
         from pyspark.pandas.data_type_ops.date_ops import DateOps
         from pyspark.pandas.data_type_ops.datetime_ops import DatetimeOps
         from pyspark.pandas.data_type_ops.null_ops import NullOps
-        from pyspark.pandas.data_type_ops.num_ops import IntegralOps, FractionalOps
-        from pyspark.pandas.data_type_ops.string_ops import StringOps
+        from pyspark.pandas.data_type_ops.num_ops import (
+            DecimalOps,
+            FractionalExtensionOps,
+            FractionalOps,
+            IntegralExtensionOps,
+            IntegralOps,
+        )
+        from pyspark.pandas.data_type_ops.string_ops import StringOps, StringExtensionOps
         from pyspark.pandas.data_type_ops.udt_ops import UDTOps
 
         if isinstance(dtype, CategoricalDtype):
             return object.__new__(CategoricalOps)
+        elif isinstance(spark_type, DecimalType):
+            return object.__new__(DecimalOps)
         elif isinstance(spark_type, FractionalType):
-            return object.__new__(FractionalOps)
+            if extension_float_dtypes_available and type(dtype) in [Float32Dtype, Float64Dtype]:
+                return object.__new__(FractionalExtensionOps)
+            else:
+                return object.__new__(FractionalOps)
         elif isinstance(spark_type, IntegralType):
-            return object.__new__(IntegralOps)
+            if extension_dtypes_available and type(dtype) in [
+                Int8Dtype,
+                Int16Dtype,
+                Int32Dtype,
+                Int64Dtype,
+            ]:
+                return object.__new__(IntegralExtensionOps)
+            else:
+                return object.__new__(IntegralOps)
         elif isinstance(spark_type, StringType):
-            return object.__new__(StringOps)
+            if extension_object_dtypes_available and isinstance(dtype, StringDtype):
+                return object.__new__(StringExtensionOps)
+            else:
+                return object.__new__(StringOps)
         elif isinstance(spark_type, BooleanType):
             if extension_object_dtypes_available and isinstance(dtype, BooleanDtype):
                 return object.__new__(BooleanExtensionOps)
@@ -299,6 +332,9 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def prepare(self, col: pd.Series) -> pd.Series:
         """Prepare column when from_pandas."""
         return col.replace({np.nan: None})
+
+    def isnull(self, index_ops: Union["Index", "Series"]) -> Union["Series", "Index"]:
+        return index_ops._with_new_scol(index_ops.spark.column.isNull())
 
     def astype(
         self, index_ops: Union["Index", "Series"], dtype: Union[str, type, Dtype]
