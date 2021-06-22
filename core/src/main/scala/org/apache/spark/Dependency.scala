@@ -119,6 +119,14 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
    */
   private[this] var _shuffleMergedFinalized: Boolean = false
 
+  /**
+   * shuffleSequenceId is used to give temporal ordering to the executions of a ShuffleDependency.
+   * This is required in order to handle indeterministic stage retries for push-based shuffle.
+   */
+  private[this] var nextShuffleSequenceId: Int = 0
+
+  def shuffleSequenceId: Int = nextShuffleSequenceId
+
   def setMergerLocs(mergerLocs: Seq[BlockManagerId]): Unit = {
     if (mergerLocs != null) {
       this.mergerLocs = mergerLocs

@@ -42,10 +42,11 @@ public class FetchShuffleBlocks extends AbstractFetchShuffleBlocks {
       String appId,
       String execId,
       int shuffleId,
+      int shuffleSequenceId,
       long[] mapIds,
       int[][] reduceIds,
       boolean batchFetchEnabled) {
-    super(appId, execId, shuffleId);
+    super(appId, execId, shuffleId, shuffleSequenceId);
     this.mapIds = mapIds;
     this.reduceIds = reduceIds;
     assert(mapIds.length == reduceIds.length);
@@ -130,6 +131,7 @@ public class FetchShuffleBlocks extends AbstractFetchShuffleBlocks {
     String appId = Encoders.Strings.decode(buf);
     String execId = Encoders.Strings.decode(buf);
     int shuffleId = buf.readInt();
+    int shuffleSequenceId = buf.readInt();
     long[] mapIds = Encoders.LongArrays.decode(buf);
     int reduceIdsSize = buf.readInt();
     int[][] reduceIds = new int[reduceIdsSize][];
@@ -137,6 +139,6 @@ public class FetchShuffleBlocks extends AbstractFetchShuffleBlocks {
       reduceIds[i] = Encoders.IntArrays.decode(buf);
     }
     boolean batchFetchEnabled = buf.readBoolean();
-    return new FetchShuffleBlocks(appId, execId, shuffleId, mapIds, reduceIds, batchFetchEnabled);
+    return new FetchShuffleBlocks(appId, execId, shuffleId, shuffleSequenceId, mapIds, reduceIds, batchFetchEnabled);
   }
 }

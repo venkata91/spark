@@ -33,21 +33,25 @@ public abstract class AbstractFetchShuffleBlocks extends BlockTransferMessage {
   public final String appId;
   public final String execId;
   public final int shuffleId;
+  public final int shuffleSequenceId;
 
   protected AbstractFetchShuffleBlocks(
       String appId,
       String execId,
-      int shuffleId) {
+      int shuffleId,
+      int shuffleSequenceId) {
     this.appId = appId;
     this.execId = execId;
     this.shuffleId = shuffleId;
+    this.shuffleSequenceId = shuffleSequenceId;
   }
 
   public ToStringBuilder toStringHelper() {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
       .append("appId", appId)
       .append("execId", execId)
-      .append("shuffleId", shuffleId);
+      .append("shuffleId", shuffleId)
+      .append("shuffleSequenceId", shuffleSequenceId);
   }
 
   /**
@@ -60,7 +64,7 @@ public abstract class AbstractFetchShuffleBlocks extends BlockTransferMessage {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     AbstractFetchShuffleBlocks that = (AbstractFetchShuffleBlocks) o;
-    return shuffleId == that.shuffleId
+    return shuffleId == that.shuffleId && shuffleSequenceId == that.shuffleSequenceId
       && Objects.equal(appId, that.appId) && Objects.equal(execId, that.execId);
   }
 
@@ -69,6 +73,7 @@ public abstract class AbstractFetchShuffleBlocks extends BlockTransferMessage {
     int result = appId.hashCode();
     result = 31 * result + execId.hashCode();
     result = 31 * result + shuffleId;
+    result = 31 * result + shuffleSequenceId;
     return result;
   }
 
@@ -76,7 +81,7 @@ public abstract class AbstractFetchShuffleBlocks extends BlockTransferMessage {
   public int encodedLength() {
     return Encoders.Strings.encodedLength(appId)
       + Encoders.Strings.encodedLength(execId)
-      + 4; /* encoded length of shuffleId */
+      + 8; /* encoded length of shuffleId and shuffleSequenceId*/
   }
 
   @Override
@@ -84,5 +89,6 @@ public abstract class AbstractFetchShuffleBlocks extends BlockTransferMessage {
     Encoders.Strings.encode(buf, appId);
     Encoders.Strings.encode(buf, execId);
     buf.writeInt(shuffleId);
+    buf.writeInt(shuffleSequenceId);
   }
 }

@@ -43,19 +43,16 @@ import org.apache.spark.util.Utils
  */
 private[spark] class MergeStatus(
     private[this] var loc: BlockManagerId,
-    private[this] var _stageId: Int,
-    private[this] var _stageAttemptNumber: Int,
+    private[this] var _shuffleSequenceId: Int,
     private[this] var mapTracker: RoaringBitmap,
     private[this] var size: Long)
   extends Externalizable with ShuffleOutputStatus {
 
-  protected def this() = this(null, null, null, null, -1) // For deserialization only
+  protected def this() = this(null, -1, null, -1) // For deserialization only
 
   def location: BlockManagerId = loc
 
-  def stageId: Int = _stageId
-
-  def stageAttemptNumber: Int = _stageAttemptNumber
+  def shuffleSequenceId: Int = _shuffleSequenceId
 
   def totalSize: Long = size
 
@@ -106,11 +103,10 @@ private[spark] object MergeStatus {
     assert(mergeStatuses.bitmaps.length == mergeStatuses.reduceIds.length &&
       mergeStatuses.bitmaps.length == mergeStatuses.sizes.length)
     val mergerLoc = BlockManagerId(BlockManagerId.SHUFFLE_MERGER_IDENTIFIER, loc.host, loc.port)
-    val stageId = mergeStatuses.stageId
-    val stageAttemptNumber = mergeStatuses.stageAttemptNumber
+    val shuffleSequenceId = mergeStatuses.shuffleSequenceId
     mergeStatuses.bitmaps.zipWithIndex.map {
       case (bitmap, index) =>
-        val mergeStatus = new MergeStatus(mergerLoc, stageId, stageAttemptNumber, bitmap,
+        val mergeStatus = new MergeStatus(mergerLoc, shuffleSequenceId, bitmap,
           mergeStatuses.sizes(index))
         (mergeStatuses.reduceIds(index), mergeStatus)
     }
@@ -118,10 +114,9 @@ private[spark] object MergeStatus {
 
   def apply(
       loc: BlockManagerId,
-      stageId: Int,
-      stageAttemptNumber: Int,
+      shuffleSequenceId: Int,
       bitmap: RoaringBitmap,
       size: Long): MergeStatus = {
-    new MergeStatus(loc, stageId, stageAttemptNumber, bitmap, size)
+    new MergeStatus(loc, shuffleSequenceId, bitmap, size)
   }
 }

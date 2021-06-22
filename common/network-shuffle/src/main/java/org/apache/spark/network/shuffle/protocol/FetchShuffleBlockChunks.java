@@ -42,9 +42,10 @@ public class FetchShuffleBlockChunks extends AbstractFetchShuffleBlocks {
       String appId,
       String execId,
       int shuffleId,
+      int shuffleSequenceId,
       int[] reduceIds,
       int[][] chunkIds) {
-    super(appId, execId, shuffleId);
+    super(appId, execId, shuffleId, shuffleSequenceId);
     this.reduceIds = reduceIds;
     this.chunkIds = chunkIds;
     assert(reduceIds.length == chunkIds.length);
@@ -117,12 +118,13 @@ public class FetchShuffleBlockChunks extends AbstractFetchShuffleBlocks {
     String appId = Encoders.Strings.decode(buf);
     String execId = Encoders.Strings.decode(buf);
     int shuffleId = buf.readInt();
+    int shuffleSequenceId = buf.readInt();
     int[] reduceIds = Encoders.IntArrays.decode(buf);
     int chunkIdsLen = buf.readInt();
     int[][] chunkIds = new int[chunkIdsLen][];
     for (int i = 0; i < chunkIdsLen; i++) {
       chunkIds[i] = Encoders.IntArrays.decode(buf);
     }
-    return new FetchShuffleBlockChunks(appId, execId, shuffleId, reduceIds, chunkIds);
+    return new FetchShuffleBlockChunks(appId, execId, shuffleId, shuffleSequenceId, reduceIds, chunkIds);
   }
 }
