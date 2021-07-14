@@ -379,7 +379,7 @@ private[spark] class IndexShuffleBlockResolver(
    * knows how to consume local merged shuffle file as multiple chunks.
    */
   override def getMergedBlockData(
-      blockId: ShufflePushMergeBlockId,
+      blockId: ShufflePushBlockId,
       dirs: Option[Array[String]]): Seq[ManagedBuffer] = {
     val indexFile =
       getMergedBlockIndexFile(conf.getAppId, blockId.shuffleId, blockId.shuffleSequenceId,
@@ -408,7 +408,7 @@ private[spark] class IndexShuffleBlockResolver(
    * This is only used for reading local merged block meta data.
    */
   override def getMergedBlockMeta(
-      blockId: ShufflePushMergeBlockId,
+      blockId: ShufflePushBlockId,
       dirs: Option[Array[String]]): MergedBlockMeta = {
     val indexFile =
       getMergedBlockIndexFile(conf.getAppId, blockId.shuffleId,
