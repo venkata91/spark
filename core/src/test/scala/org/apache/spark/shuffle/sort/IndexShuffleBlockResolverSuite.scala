@@ -169,8 +169,9 @@ class IndexShuffleBlockResolverSuite extends SparkFunSuite with BeforeAndAfterEa
 
   test("getMergedBlockData should return expected FileSegmentManagedBuffer list") {
     val shuffleId = 1
+    val shuffleSequenceId = 0
     val reduceId = 1
-    val dataFileName = s"shuffleMerged_${appId}_${shuffleId}_$reduceId.data"
+    val dataFileName = s"shuffleMerged_${appId}_${shuffleId}_${shuffleSequenceId}_$reduceId.data"
     val dataFile = new File(tempDir.getAbsolutePath, dataFileName)
     val out = new FileOutputStream(dataFile)
     Utils.tryWithSafeFinally {
@@ -178,12 +179,13 @@ class IndexShuffleBlockResolverSuite extends SparkFunSuite with BeforeAndAfterEa
     } {
       out.close()
     }
-    val indexFileName = s"shuffleMerged_${appId}_${shuffleId}_$reduceId.index"
+    val indexFileName = s"shuffleMerged_${appId}_${shuffleId}_${shuffleSequenceId}_$reduceId.index"
     generateMergedShuffleIndexFile(indexFileName)
     val resolver = new IndexShuffleBlockResolver(conf, blockManager)
     val dirs = Some(Array[String](tempDir.getAbsolutePath))
     val managedBufferList =
-      resolver.getMergedBlockData(ShufflePushBlockId(shuffleId, 0, -1, reduceId), dirs)
+      resolver.getMergedBlockData(ShufflePushBlockId(shuffleId, shuffleSequenceId, -1, reduceId),
+        dirs)
     assert(managedBufferList.size === 3)
     assert(managedBufferList(0).size === 10)
     assert(managedBufferList(1).size === 0)
@@ -192,8 +194,9 @@ class IndexShuffleBlockResolverSuite extends SparkFunSuite with BeforeAndAfterEa
 
   test("getMergedBlockMeta should return expected MergedBlockMeta") {
     val shuffleId = 1
+    val shuffleSequenceId = 0
     val reduceId = 1
-    val metaFileName = s"shuffleMerged_${appId}_${shuffleId}_$reduceId.meta"
+    val metaFileName = s"shuffleMerged_${appId}_${shuffleId}_${shuffleSequenceId}_$reduceId.meta"
     val metaFile = new File(tempDir.getAbsolutePath, metaFileName)
     val chunkTracker = new RoaringBitmap()
     val metaFileOutputStream = new FileOutputStream(metaFile)
@@ -213,13 +216,15 @@ class IndexShuffleBlockResolverSuite extends SparkFunSuite with BeforeAndAfterEa
     }{
       outMeta.close()
     }
-    val indexFileName = s"shuffleMerged_${appId}_${shuffleId}_$reduceId.index"
+    val indexFileName = s"shuffleMerged_${appId}_${shuffleId}_${shuffleSequenceId}_$reduceId.index"
     generateMergedShuffleIndexFile(indexFileName)
     val resolver = new IndexShuffleBlockResolver(conf, blockManager)
     val dirs = Some(Array[String](tempDir.getAbsolutePath))
     val mergedBlockMeta =
       resolver.getMergedBlockMeta(
-        ShufflePushBlockId(shuffleId, 0, MapOutputTracker.SHUFFLE_PUSH_MAP_ID, reduceId), dirs)
+        ShufflePushBlockId(shuffleId, shuffleSequenceId, MapOutputTracker.SHUFFLE_PUSH_MAP_ID,
+          reduceId),
+        dirs)
     assert(mergedBlockMeta.getNumChunks === 3)
     assert(mergedBlockMeta.readChunkBitmaps().size === 3)
     assert(mergedBlockMeta.readChunkBitmaps()(0).contains(1))
