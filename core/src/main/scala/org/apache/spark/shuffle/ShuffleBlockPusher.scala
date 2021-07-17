@@ -73,9 +73,9 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
       // Also see updateStateAndCheckIfPushMore.
       override def shouldRetryError(t: Throwable): Boolean = {
         // If the block is too late or the invalid block push, there is no need to retry it
-        !Throwables.getStackTraceAsString(t)
+        !(Throwables.getStackTraceAsString(t)
           .contains(BlockPushErrorHandler.TOO_LATE_MESSAGE_SUFFIX) ||
-          !Throwables.getStackTraceAsString(t).contains(BlockPushErrorHandler.INVALID_BLOCK_PUSH)
+          Throwables.getStackTraceAsString(t).contains(BlockPushErrorHandler.INVALID_BLOCK_PUSH));
       }
     }
   }
@@ -301,7 +301,9 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
       }
     }
     if (pushResult.failure != null && !errorHandler.shouldRetryError(pushResult.failure)) {
-      logDebug(s"Received after merge is finalized from $address. Not pushing any more blocks.")
+      logDebug(s"Received invalid block (from an older attempt of a shuffle in the case" +
+        s" of indeterminate stage) or after merge is finalized from $address. Not pushing" +
+        s" any more blocks.")
       return false
     } else {
       remainingBlocks.isEmpty && (pushRequests.nonEmpty || deferredPushRequests.nonEmpty)
