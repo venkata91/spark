@@ -97,8 +97,9 @@ class MyRDD(
     indeterminate: Boolean = false)
   extends RDD[(Int, Int)](sc, dependencies) with Serializable {
 
-  override def compute(split: Partition, context: TaskContext): Iterator[(Int, Int)] =
-    throw new RuntimeException("should not be reached")
+  override def compute(split: Partition, context: TaskContext): Iterator[(Int, Int)] = {
+    Iterator.single((1, 1))
+  }
 
   override def getPartitions: Array[Partition] = (0 until numPartitions).map(i => new Partition {
     override def index: Int = i
@@ -3431,6 +3432,54 @@ class DAGSchedulerSuite extends SparkFunSuite with TempLocalSparkContext with Ti
     conf.set("spark.master", "pushbasedshuffleclustermanager")
     // Needed to run push-based shuffle tests in ad-hoc manner through IDE
     conf.set(Tests.IS_TESTING, true)
+  }
+
+  test("Job hang") {
+    initPushBasedShuffleConfs(conf)
+    conf.set("spark.shuffle.push.mergerLocations.minThreshold", "5")
+    DAGSchedulerSuite.clearMergerLocs
+    DAGSchedulerSuite.addMergerLocs(Seq("host1", "host2", "host3", "host4", "host5"))
+    val latch = new CountDownLatch(1)
+    scheduler = new MyDAGScheduler(
+      sc,
+      taskScheduler,
+      sc.listenerBus,
+      mapOutputTracker,
+      blockManagerMaster,
+      sc.env) {
+      override private[spark] def scheduleShuffleMergeFinalize(
+          stage: ShuffleMapStage): Unit = {
+        // By this, we can mimic a stage with all tasks finished
+        // but finalization is incomplete.
+        latch.countDown()
+        // super.scheduleShuffleMergeFinalize(stage)
+      }
+    }
+
+    dagEventProcessLoopTester = new DAGSchedulerEventProcessLoopTester(scheduler)
+    sc.dagScheduler = scheduler
+    sc.taskScheduler.setDAGScheduler(scheduler)
+    sc.dagScheduler.eventProcessLoop = dagEventProcessLoopTester
+
+    val parts = 5
+    val shuffleMapRdd = new MyRDD(sc, parts, Nil)
+    val shuffleDep = new ShuffleDependency(shuffleMapRdd, new HashPartitioner(parts))
+    val reduceRdd1 = new MyRDD(sc, parts, List(shuffleDep), tracker = mapOutputTracker)
+    reduceRdd1.countAsync()
+    completeShuffleMapStageSuccessfully(0, 0, parts)
+    completeNextResultStageWithSuccess(1, 0)
+    latch.await()
+    // scalastyle:off
+    println("=========after wait==========")
+    // set _shuffleMergedFinalized to true can avoid the hang.
+    val reduceRdd2 = new MyRDD(sc, parts, List(shuffleDep))
+    reduceRdd2.countAsync()
+    assert(scheduler.stageIdToStage(2).latestInfo.taskMetrics == null)
+    completeNextResultStageWithSuccess(3, 0)
+    println(results)
+
+    results.clear()
+    assertDataStructuresEmpty()
   }
 
   test("SPARK-32920: shuffle merge finalization") {
