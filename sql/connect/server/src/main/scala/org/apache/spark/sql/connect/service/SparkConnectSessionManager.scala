@@ -350,11 +350,12 @@ class SparkConnectSessionManager extends Logging {
         logInfo(
           log"Found session ${MDC(SESSION_HOLD_INFO, info)} that expired " +
             log"and will be closed.")
-        removeSessionHolder(info.key)
-        try {
-          shutdownSessionHolder(sessionHolder)
-        } catch {
-          case NonFatal(ex) => logWarning("Unexpected exception closing session", ex)
+        removeSessionHolder(info.key).foreach { removed =>
+          try {
+            shutdownSessionHolder(removed)
+          } catch {
+            case NonFatal(ex) => logWarning("Unexpected exception closing session", ex)
+          }
         }
       }
     })

@@ -158,7 +158,7 @@ object Connect {
           "session id afterwards. Only set this when the client does not depend on server-side " +
           "session state, such as temporary views, temporary functions, cached data or the " +
           "current catalog, surviving a close.")
-      .version("5.0.0")
+      .version("4.4.0")
       .booleanConf
       .createWithDefault(false)
 

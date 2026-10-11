@@ -219,7 +219,30 @@ class SparkConnectSessionManagerSuite extends SharedSparkSession {
     // The old session is removed but not closed yet: it must not be recreated in this window.
     assertSessionClosed(key)
 
-    SparkConnectService.sessionManager.shutdownSessionHolder(holder)
+    val latch = new java.util.concurrent.CountDownLatch(1)
+    val closeStarted = new java.util.concurrent.CountDownLatch(1)
+    val blockingHolder = new SessionHolder(holder.userId, holder.sessionId, holder.session) {
+      override private[connect] def close(): Unit = {
+        closeStarted.countDown()
+        latch.await()
+        super.close()
+      }
+    }
+    // Copy state needed for close
+    blockingHolder.initializeSession()
+    blockingHolder.eventManager.status = holder.eventManager.status
+    blockingHolder.closedTimeMs = holder.closedTimeMs
+
+    val t = new Thread(() => {
+      SparkConnectService.sessionManager.shutdownSessionHolder(blockingHolder)
+    })
+    t.start()
+    assert(closeStarted.await(10, java.util.concurrent.TimeUnit.SECONDS), "close should start")
+    // While close() is still running, the session id must remain tombstoned.
+    assertSessionClosed(key)
+    latch.countDown()
+    t.join(10000)
+    // After close() completes, the session id becomes reusable when reconnect is allowed.
     SparkConnectService.sessionManager.getOrCreateIsolatedSession(key, None)
   }
 
